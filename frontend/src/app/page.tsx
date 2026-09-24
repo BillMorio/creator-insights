@@ -8,7 +8,8 @@ function StatusPill({ s }: { s: Creator["scrape_status"] }) {
   if (s === "scraping" || s === "pending")
     return (
       <span className="pill scraping">
-        <span className="spin" /> &nbsp;Scraping
+        <span className="spin" />
+        Scraping
       </span>
     )
   if (s === "ready") return <span className="pill ready">Ready</span>
@@ -16,128 +17,139 @@ function StatusPill({ s }: { s: Creator["scrape_status"] }) {
   return <span className="pill pending">{s}</span>
 }
 
+function Avatar({ src, lg }: { src?: string; lg?: boolean }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return src ? <img className={`avatar${lg ? " lg" : ""}`} src={src} alt="" /> : <div className={`avatar${lg ? " lg" : ""}`} />
+}
+
 export default function Dashboard() {
   const [creators, setCreators] = useState<Creator[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [view, setView] = useState<"grid" | "table">("grid")
   const [link, setLink] = useState("")
   const [adding, setAdding] = useState(false)
   const [err, setErr] = useState("")
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const load = () => api.list().then(setCreators).catch(() => {})
+  const load = () =>
+    api.list().then((d) => { setCreators(d); setLoaded(true) }).catch(() => setLoaded(true))
 
   useEffect(() => {
     load()
-    timer.current = setInterval(load, 5000) // keep scraping cards fresh
-    return () => {
-      if (timer.current) clearInterval(timer.current)
-    }
+    timer.current = setInterval(load, 5000)
+    return () => { if (timer.current) clearInterval(timer.current) }
   }, [])
 
   async function add(e: React.FormEvent) {
     e.preventDefault()
     const v = link.trim()
     if (!v) return
-    setAdding(true)
-    setErr("")
-    try {
-      await api.add(v)
-      setLink("")
-      await load()
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
-    } finally {
-      setAdding(false)
-    }
+    setAdding(true); setErr("")
+    try { await api.add(v); setLink(""); await load() }
+    catch (e) { setErr(e instanceof Error ? e.message.slice(0, 120) : String(e)) }
+    finally { setAdding(false) }
   }
+
+  const totalViews = creators.reduce((s, c) => s + (c.total_views || 0), 0)
+  const totalPosts = creators.reduce((s, c) => s + (c.post_count || 0), 0)
 
   return (
     <div className="wrap">
-      <div className="row spread">
-        <div>
-          <h1 className="h1">Creator Insights</h1>
-          <p className="sub">Paste an Instagram account link — we pull their posts and engagement.</p>
+      <div className="header">
+        <div className="brand">
+          <div className="logo">CI</div>
+          <div>
+            <h1 className="h1">Creator Insights</h1>
+            <p className="sub">Paste an Instagram account — we pull their posts and engagement.</p>
+          </div>
         </div>
         <div className="toggle">
-          <button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")}>
-            Grid
-          </button>
-          <button className={view === "table" ? "active" : ""} onClick={() => setView("table")}>
-            Table
-          </button>
+          <button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")}>Grid</button>
+          <button className={view === "table" ? "active" : ""} onClick={() => setView("table")}>Table</button>
         </div>
       </div>
 
-      <form className="row" onSubmit={add} style={{ marginTop: 18 }}>
-        <input
-          className="input"
-          placeholder="https://www.instagram.com/username/  (or @username)"
-          value={link}
-          onChange={(e) => setLink(e.target.value)}
-        />
-        <button className="btn" disabled={adding}>
-          {adding ? "Adding…" : "+ Add link"}
-        </button>
-        {err && <span style={{ color: "#f87171", fontSize: 13 }}>{err}</span>}
+      <form className="toolbar" onSubmit={add}>
+        <div className="field">
+          <span className="at">@</span>
+          <input
+            className="input"
+            placeholder="instagram.com/username  ·  or  username"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+          />
+        </div>
+        <button className="btn" disabled={adding}>{adding ? "Adding…" : "+ Add creator"}</button>
+        {err && <span className="err">{err}</span>}
       </form>
 
-      {creators.length === 0 ? (
-        <p className="muted" style={{ marginTop: 40 }}>No creators yet. Add one above.</p>
+      {creators.length > 0 && (
+        <div className="strip">
+          <div><div className="k">Creators</div><div className="v">{fmt(creators.length)}</div></div>
+          <div><div className="k">Posts tracked</div><div className="v">{fmt(totalPosts)}</div></div>
+          <div><div className="k">Total views</div><div className="v green">{fmt(totalViews)}</div></div>
+        </div>
+      )}
+
+      {!loaded ? (
+        <div className="grid">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="card skeleton" style={{ height: 150, border: "none" }} />
+          ))}
+        </div>
+      ) : creators.length === 0 ? (
+        <div className="empty">
+          <div className="big">No creators yet</div>
+          Paste an Instagram account link above to get started.
+        </div>
       ) : view === "grid" ? (
         <div className="grid">
           {creators.map((c) => (
             <Link key={c.id} href={`/creator/${c.id}`} className="card">
-              <div className="row spread">
-                <div className="row">
-                  {c.profile_pic_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className="avatar" src={c.profile_pic_url} alt="" />
-                  ) : (
-                    <div className="avatar" />
-                  )}
-                  <div>
+              <div className="card-top">
+                <div className="who">
+                  <Avatar src={c.profile_pic_url} />
+                  <div style={{ minWidth: 0 }}>
                     <div className="uname">@{c.username}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>{c.full_name}</div>
+                    <div className="fname">{c.full_name || " "}</div>
                   </div>
                 </div>
                 <StatusPill s={c.scrape_status} />
               </div>
-              <div className="row spread">
-                <div className="stat muted">
-                  <b style={{ color: "var(--text)" }}>{fmt(c.post_count)}</b> posts
-                </div>
-                <div className="stat muted">
-                  <b style={{ color: "var(--green-soft)" }}>{fmt(c.total_views)}</b> views
-                </div>
+              <div className="metrics">
+                <div className="metric"><div className="mk">Posts</div><div className="mv">{fmt(c.post_count)}</div></div>
+                <div className="metric"><div className="mk">Views</div><div className="mv green">{fmt(c.total_views)}</div></div>
               </div>
             </Link>
           ))}
         </div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Creator</th>
-              <th>Status</th>
-              <th className="num">Posts</th>
-              <th className="num">Total views</th>
-              <th className="num">Followers</th>
-            </tr>
-          </thead>
-          <tbody>
-            {creators.map((c) => (
-              <tr key={c.id}>
-                <td>
-                  <Link href={`/creator/${c.id}`} className="link">@{c.username}</Link>
-                </td>
-                <td><StatusPill s={c.scrape_status} /></td>
-                <td className="num">{fmt(c.post_count)}</td>
-                <td className="num">{fmt(c.total_views)}</td>
-                <td className="num">{fmt(c.followers)}</td>
+        <div className="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Creator</th><th>Status</th>
+                <th className="num">Posts</th><th className="num">Total views</th><th className="num">Followers</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {creators.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <Link href={`/creator/${c.id}`} className="who">
+                      <Avatar src={c.profile_pic_url} />
+                      <span className="link" style={{ fontWeight: 600 }}>@{c.username}</span>
+                    </Link>
+                  </td>
+                  <td><StatusPill s={c.scrape_status} /></td>
+                  <td className="num">{fmt(c.post_count)}</td>
+                  <td className="num" style={{ color: "var(--green-soft)" }}>{fmt(c.total_views)}</td>
+                  <td className="num">{fmt(c.followers)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
