@@ -63,9 +63,14 @@ export default function Dashboard() {
             <p className="sub">Paste an Instagram account — we pull their posts and engagement.</p>
           </div>
         </div>
-        <div className="toggle">
-          <button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")}>Grid</button>
-          <button className={view === "table" ? "active" : ""} onClick={() => setView("table")}>Table</button>
+        <div className="row" style={{ gap: 10 }}>
+          {creators.length > 0 && (
+            <a className="btn ghost" href={api.exportAllUrl()}>↓ Export all</a>
+          )}
+          <div className="toggle">
+            <button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")}>Grid</button>
+            <button className={view === "table" ? "active" : ""} onClick={() => setView("table")}>Table</button>
+          </div>
         </div>
       </div>
 

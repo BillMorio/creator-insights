@@ -53,6 +53,7 @@ export const api = {
     fetch(`${API_BASE}/api/creators/${id}/refresh`, { method: "POST" }).then((r) => j<Creator>(r)),
   remove: (id: number) => fetch(`${API_BASE}/api/creators/${id}`, { method: "DELETE" }),
   exportUrl: (id: number) => `${API_BASE}/api/creators/${id}/export`,
+  exportAllUrl: () => `${API_BASE}/api/creators/export-all`,
 }
 
 export function fmt(n: number | null | undefined): string {

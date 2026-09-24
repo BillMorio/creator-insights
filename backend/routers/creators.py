@@ -88,6 +88,23 @@ def list_creators(db: Session = Depends(get_db)):
     return [_creator_out(c, agg) for c in creators]
 
 
+@router.get("/export-all")
+def export_all_csv(db: Session = Depends(get_db)):
+    """Every post across every creator, with the creator column."""
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["creator", "link", "views", "likes", "comments"])
+    for c in db.query(Creator).order_by(Creator.username).all():
+        for p in sorted(c.posts, key=lambda p: (p.views or 0), reverse=True):
+            w.writerow([c.username, p.url, p.views if p.views is not None else "", p.likes, p.comments])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="all_creators_posts.csv"'},
+    )
+
+
 @router.get("/{creator_id}", response_model=CreatorDetail)
 def get_creator(creator_id: int, db: Session = Depends(get_db)):
     c = db.query(Creator).get(creator_id)

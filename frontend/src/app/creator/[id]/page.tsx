@@ -14,6 +14,8 @@ export default function CreatorPage() {
   const [c, setC] = useState<CreatorDetail | null>(null)
   const [err, setErr] = useState("")
   const [sort, setSort] = useState<Sort>("views")
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 20
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const load = () => api.get(cid).then(setC).catch((e) => setErr(String(e)))
@@ -37,8 +39,13 @@ export default function CreatorPage() {
     if (sort === "date") return (b.posted_at || "").localeCompare(a.posted_at || "")
     return Number(b[sort] ?? 0) - Number(a[sort] ?? 0)
   })
+  const pages = Math.max(1, Math.ceil(posts.length / PER_PAGE))
+  const pg = Math.min(page, pages)
+  const start = (pg - 1) * PER_PAGE
+  const paged = posts.slice(start, start + PER_PAGE)
+  const setSortReset = (k: Sort) => { setSort(k); setPage(1) }
   const th = (key: Sort, label: string, num = true) => (
-    <th className={`sortable${num ? " num" : ""}`} onClick={() => setSort(key)}>
+    <th className={`sortable${num ? " num" : ""}`} onClick={() => setSortReset(key)}>
       {label}{sort === key ? " ↓" : ""}
     </th>
   )
@@ -87,13 +94,13 @@ export default function CreatorPage() {
               <tr>
                 <th>Post</th><th>Type</th>
                 {th("views", "Views")}{th("likes", "Likes")}{th("comments", "Comments")}
-                <th className="sortable" onClick={() => setSort("date")}>Posted{sort === "date" ? " ↓" : ""}</th>
+                <th className="sortable" onClick={() => setSortReset("date")}>Posted{sort === "date" ? " ↓" : ""}</th>
               </tr>
             </thead>
             <tbody>
-              {posts.map((p) => (
+              {paged.map((p) => (
                 <tr key={p.id}>
-                  <td><a className="link" href={p.url} target="_blank" rel="noopener noreferrer">{p.url.replace("https://www.instagram.com", "")}</a></td>
+                  <td><a className="link" href={p.url} target="_blank" rel="noopener noreferrer">{p.url}</a></td>
                   <td><span className="chip">{p.media_type || "post"}</span></td>
                   <td className="num">{fmt(p.views)}</td>
                   <td className="num">{fmt(p.likes)}</td>
@@ -103,6 +110,16 @@ export default function CreatorPage() {
               ))}
             </tbody>
           </table>
+          {pages > 1 && (
+            <div className="pager">
+              <span className="muted">Showing {start + 1}–{start + paged.length} of {posts.length}</span>
+              <div className="row" style={{ gap: 8 }}>
+                <button className="btn ghost sm" disabled={pg <= 1} onClick={() => setPage(pg - 1)}>Prev</button>
+                <span className="muted" style={{ fontSize: 13 }}>Page {pg} / {pages}</span>
+                <button className="btn ghost sm" disabled={pg >= pages} onClick={() => setPage(pg + 1)}>Next</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
