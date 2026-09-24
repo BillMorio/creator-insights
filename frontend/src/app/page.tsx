@@ -17,9 +17,14 @@ function StatusPill({ s }: { s: Creator["scrape_status"] }) {
   return <span className="pill pending">{s}</span>
 }
 
-function Avatar({ src, lg }: { src?: string; lg?: boolean }) {
-  // eslint-disable-next-line @next/next/no-img-element
-  return src ? <img className={`avatar${lg ? " lg" : ""}`} src={src} alt="" /> : <div className={`avatar${lg ? " lg" : ""}`} />
+export function Avatar({ src, lg, name }: { src?: string; lg?: boolean; name?: string }) {
+  const cls = `avatar${lg ? " lg" : ""}`
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className={cls} src={src} alt="" />
+  }
+  const initial = (name || "?").trim().charAt(0).toUpperCase() || "?"
+  return <div className={`${cls} avatar-fallback`}>{initial}</div>
 }
 
 export default function Dashboard() {
@@ -113,7 +118,7 @@ export default function Dashboard() {
             <Link key={c.id} href={`/creator/${c.id}`} className="card">
               <div className="card-top">
                 <div className="who">
-                  <Avatar src={c.profile_pic_url} />
+                  <Avatar src={c.profile_pic_url} name={c.username} />
                   <div style={{ minWidth: 0 }}>
                     <div className="uname">@{c.username}</div>
                     <div className="fname">{c.full_name || " "}</div>
@@ -142,7 +147,7 @@ export default function Dashboard() {
                 <tr key={c.id}>
                   <td>
                     <Link href={`/creator/${c.id}`} className="who">
-                      <Avatar src={c.profile_pic_url} />
+                      <Avatar src={c.profile_pic_url} name={c.username} />
                       <span className="link" style={{ fontWeight: 600 }}>@{c.username}</span>
                     </Link>
                   </td>

@@ -96,6 +96,12 @@ a { color: inherit; text-decoration: none; }
   background: var(--panel-2); border: 1px solid var(--border-2);
 }
 .avatar.lg { width: 60px; height: 60px; }
+.avatar-fallback {
+  display: grid; place-items: center; font-weight: 800; color: var(--green-soft);
+  font-size: 18px; text-transform: uppercase; user-select: none;
+  background: linear-gradient(135deg, var(--panel-2), var(--bg-2));
+}
+.avatar.lg.avatar-fallback { font-size: 24px; }
 .uname { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fname { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .metrics { display: flex; gap: 10px; }

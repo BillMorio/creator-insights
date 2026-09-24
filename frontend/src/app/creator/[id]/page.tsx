@@ -56,10 +56,12 @@ export default function CreatorPage() {
 
       <div className="header" style={{ marginTop: 16 }}>
         <div className="brand">
-          {c.profile_pic_url
+          {c.profile_pic_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img className="avatar lg" src={c.profile_pic_url} alt="" />
-            : <div className="avatar lg" />}
+            <img className="avatar lg" src={c.profile_pic_url} alt="" />
+          ) : (
+            <div className="avatar lg avatar-fallback">{(c.username || "?").charAt(0).toUpperCase()}</div>
+          )}
           <div>
             <h1 className="h1">@{c.username}</h1>
             <div className="dstats">
