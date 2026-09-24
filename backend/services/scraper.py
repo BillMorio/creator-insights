@@ -130,19 +130,9 @@ def _normalize_dataset(items: list[dict], username: str) -> dict:
     return {"profile": profile, "posts": uniq}
 
 
-def scrape_creator(username: str, limit: int | None = None) -> dict:
-    """Run the Apify actor for one username (async run -> poll -> dataset).
-    Returns {profile, posts, run_id}. Raises on hard failure so the worker can
-    mark the job failed. run-sync is avoided: it returns empty on slower runs."""
-    if not APIFY_TOKEN:
-        raise RuntimeError("APIFY_TOKEN must be set")
-    limit = limit or POSTS_LIMIT
-    run_input = {
-        "directUrls": [f"https://www.instagram.com/{username}/"],
-        "resultsType": "posts",
-        "resultsLimit": limit,
-        "addParentData": True,          # attaches owner/profile info to items
-    }
+def _run_actor(run_input: dict, item_limit: int) -> list[dict]:
+    """Async run -> poll -> fetch dataset items. run-sync is avoided (it returns
+    empty on slower runs). Raises on hard failure."""
     with httpx.Client(timeout=60) as client:
         started = client.post(
             f"{APIFY_BASE}/acts/{APIFY_IG_ACTOR}/runs?token={APIFY_TOKEN}", json=run_input
@@ -152,8 +142,7 @@ def scrape_creator(username: str, limit: int | None = None) -> dict:
         run_id = run.get("id")
         dataset_id = run.get("defaultDatasetId")
 
-        waited = 0
-        status = run.get("status")
+        waited, status = 0, run.get("status")
         while status not in ("SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"):
             if waited >= RUN_MAX_WAIT:
                 raise RuntimeError(f"Apify run {run_id} timed out after {waited}s")
@@ -167,12 +156,32 @@ def scrape_creator(username: str, limit: int | None = None) -> dict:
             raise RuntimeError(f"Apify run {run_id} ended {status}")
 
         items = client.get(
-            f"{APIFY_BASE}/datasets/{dataset_id}/items?token={APIFY_TOKEN}&clean=true&limit={limit}",
+            f"{APIFY_BASE}/datasets/{dataset_id}/items?token={APIFY_TOKEN}&clean=true&limit={item_limit}",
             timeout=120,
         ).json()
+    return items if isinstance(items, list) else []
 
-    if not isinstance(items, list):
-        items = []
-    result = _normalize_dataset(items, username)
-    result["run_id"] = run_id
+
+def scrape_creator(username: str, limit: int | None = None) -> dict:
+    """Two Apify runs merged into {profile, posts}: a cheap 'details' run for the
+    profile (followers, post count, avatar — NOT present on post items) plus a
+    'posts' run for the per-post engagement. Raises on hard failure."""
+    if not APIFY_TOKEN:
+        raise RuntimeError("APIFY_TOKEN must be set")
+    limit = limit or POSTS_LIMIT
+    url = f"https://www.instagram.com/{username}/"
+
+    # 1) profile details — the only source of followersCount / postsCount.
+    details = _run_actor(
+        {"directUrls": [url], "resultsType": "details", "resultsLimit": 1}, 1
+    )
+    # 2) the posts (with view counts).
+    posts = _run_actor(
+        {"directUrls": [url], "resultsType": "posts", "resultsLimit": limit,
+         "addParentData": True},
+        limit,
+    )
+
+    result = _normalize_dataset(details + posts, username)
+    result["run_id"] = None
     return result
