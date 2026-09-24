@@ -17,7 +17,7 @@ function StatusPill({ s }: { s: Creator["scrape_status"] }) {
   return <span className="pill pending">{s}</span>
 }
 
-export function Avatar({ src, lg, name }: { src?: string; lg?: boolean; name?: string }) {
+function Avatar({ src, lg, name }: { src?: string; lg?: boolean; name?: string }) {
   const cls = `avatar${lg ? " lg" : ""}`
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element
